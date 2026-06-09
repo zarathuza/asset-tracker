@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>자산 관리</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #00d2ff;
+      --green: #3fb950;
+      --red: #f85149;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    main { padding: 20px 16px 88px; max-width: 520px; margin: 0 auto; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+
+    /* ── 요약 카드 ── */
+    .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+    .card.full { grid-column: 1/-1; }
+    .card-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+    .card-value { font-size: 24px; font-weight: 700; }
+    .card-value.accent { color: var(--accent); }
+    .delta { font-size: 12px; margin-top: 5px; }
+    .up { color: var(--green); } .down { color: var(--red); }
+
+    /* ── 차트 ── */
+    .chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+    .chart-title { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 14px; }
+    .chart-box { position: relative; height: 200px; }
+    .chart-box.sm { height: 170px; }
+
+    /* ── 항목 토글 ── */
+    .toggles { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .tog { padding: 4px 10px; border-radius: 20px; font-size: 11px; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); transition: all .15s; }
+    .tog.on { border-color: var(--accent); color: var(--accent); background: rgba(0,210,255,.08); }
+
+    /* ── 입력 ── */
+    .month-picker { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 10px 14px; border-radius: 10px; font-size: 15px; width: 100%; margin-bottom: 20px; }
+    .section-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+    .input-block { margin-bottom: 20px; }
+    .irow { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+    .irow:last-child { border-bottom: none; }
+    .iname { flex: 0 0 110px; font-size: 13px; line-height: 1.3; }
+    .iname .badge { font-size: 10px; color: var(--muted); background: var(--surface2); border-radius: 4px; padding: 1px 5px; display: inline-block; margin-top: 2px; }
+    .ifields { flex: 1; display: flex; gap: 5px; }
+    .ifields input { flex: 1; min-width: 0; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 8px; border-radius: 8px; font-size: 13px; text-align: right; }
+    .ifields input:focus { outline: none; border-color: var(--accent); }
+    .ifields input::placeholder { color: #4a5568; font-size: 12px; font-style: italic; }
+    .ifields input.num { font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+    .note-input { flex: 0 0 56px !important; text-align: left !important; font-size: 11px !important; }
+    .col-headers { display: flex; gap: 8px; padding: 0 0 6px; font-size: 10px; color: var(--muted); text-align: right; }
+    .col-headers .spacer { flex: 0 0 118px; }
+    .col-headers span { flex: 1; }
+    .col-headers .note-h { flex: 0 0 56px; text-align: left; }
+    .save-btn { width: 100%; padding: 15px; background: var(--accent); color: #000; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+    .save-btn:active { opacity: .85; }
+
+    /* ── 기록 ── */
+    .month-list { display: flex; flex-direction: column; gap: 8px; }
+    .mitem { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: border-color .15s; }
+    .mitem:hover { border-color: var(--accent); }
+    .mitem-main { font-size: 15px; font-weight: 600; }
+    .mitem-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .mitem-net { font-size: 15px; font-weight: 700; color: var(--accent); }
+    .back-btn { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 13px; margin-bottom: 14px; }
+    .htable { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .htable th { color: var(--muted); font-weight: 500; padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--border); }
+    .htable th:first-child { text-align: left; }
+    .htable td { padding: 11px 10px; text-align: right; border-bottom: 1px solid var(--border); }
+    .htable td:first-child { text-align: left; font-size: 13px; }
+    .htable tr.total td { font-weight: 700; border-top: 2px solid var(--border); border-bottom: none; }
+    .tbl-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 14px; }
+    .action-btn { width: 100%; padding: 13px 16px; background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 10px; cursor: pointer; font-size: 14px; text-align: left; margin-bottom: 8px; transition: border-color .15s; }
+    .action-btn:hover { border-color: var(--accent); }
+
+    /* ── 설정 ── */
+    .settings-section { margin-bottom: 28px; }
+    .settings-title { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 12px; }
+    .item-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .item-row { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; }
+    .item-name { flex: 1; font-size: 14px; }
+    .cat-badge { font-size: 11px; color: var(--muted); background: var(--surface2); border-radius: 4px; padding: 2px 7px; }
+    .del-btn { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; line-height: 1; }
+    .del-btn:hover { color: var(--red); }
+    .drag-handle { color: var(--border); cursor: grab; font-size: 16px; padding: 0 4px; user-select: none; flex-shrink: 0; }
+    .drag-handle:active { cursor: grabbing; }
+    .item-row.dragging { opacity: .4; }
+    .item-row.drag-over { border-color: var(--accent); background: rgba(0,210,255,.06); }
+    .add-form { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .add-form input, .add-form select { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 10px 12px; border-radius: 8px; font-size: 14px; margin-bottom: 8px; }
+    .add-form input:focus, .add-form select:focus { outline: none; border-color: var(--accent); }
+    .add-form select option { background: var(--surface2); }
+    .add-btn { width: 100%; padding: 11px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .add-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .empty { color: var(--muted); text-align: center; padding: 40px 0; font-size: 14px; }
+
+    /* ── 스탯 행 ── */
+    .stat-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+    .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 6px; }
+    .stat-value { font-size: 15px; font-weight: 700; }
+    .stat-value.pos { color: var(--green); }
+    .stat-value.neg { color: var(--red); }
+    .stat-value.warn { color: #f59e0b; }
+    .stat-sub { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+    /* ── 목표 진행바 ── */
+    .goal-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+    .goal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .goal-title { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; }
+    .goal-pct { font-size: 18px; font-weight: 700; color: var(--accent); }
+    .progress-track { background: var(--surface2); border-radius: 99px; height: 8px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent), #7c3aed); transition: width .6s ease; }
+    .goal-meta { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: var(--muted); }
+
+    /* ── 인사이트 ── */
+    .insight-box { border-radius: 14px; padding: 16px 18px; margin-bottom: 14px; border: 1px solid; }
+    .insight-box.pos { background: rgba(63,185,80,.07); border-color: rgba(63,185,80,.3); }
+    .insight-box.neg { background: rgba(248,81,73,.07); border-color: rgba(248,81,73,.3); }
+    .insight-title { font-size: 13px; font-weight: 700; margin-bottom: 10px; letter-spacing: .01em; }
+    .insight-line { font-size: 13px; color: var(--text); line-height: 1.7; }
+    .insight-line b { color: var(--text); font-weight: 700; }
+
+    /* ── 네비 ── */
+    nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); display: flex; z-index: 100; }
+    nav button { flex: 1; padding: 12px 4px 10px; background: none; border: none; cursor: pointer; color: var(--muted); font-size: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: color .2s; }
+    nav button.active { color: var(--accent); }
+    nav svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ── 토스트 ── */
+    .toast { position: fixed; bottom: 92px; left: 50%; transform: translateX(-50%); padding: 10px 22px; border-radius: 20px; font-size: 14px; font-weight: 600; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 200; white-space: nowrap; }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+<main id="app"></main>
+
+<nav>
+  <button id="nav-dashboard" onclick="App.go('dashboard')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    대시보드
+  </button>
+  <button id="nav-input" onclick="App.go('input')">
+    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    입력
+  </button>
+  <button id="nav-history" onclick="App.go('history')">
+    <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    기록
+  </button>
+  <button id="nav-settings" onclick="App.go('settings')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    설정
+  </button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── 기본 데이터 ────────────────────────────────────────────
+const DEFAULT_ITEMS = [
+  { id: 'nh-check',       name: 'NH뱅크 월급통장',       category: '예금',   owner: '본인' },
+  { id: 'nh-savings',     name: 'NH 주택청약통장',        category: '예금',   owner: '본인' },
+  { id: 'woori-savings',  name: '우리은행 주택청약통장',  category: '예금',   owner: '경화' },
+  { id: 'samsung-pension',name: '삼성생명 퇴직연금',      category: '연금',   owner: '본인' },
+  { id: 'lotte-castle',   name: '롯데캐슬',               category: '부동산', owner: '본인' },
+  { id: 'bmw-620d',       name: 'BMW 620D',               category: '차량',   owner: '본인' },
+  { id: 'grandeur',       name: '그랜저 IG',              category: '차량',   owner: '본인' },
+  { id: 'mortgage',       name: '주택담보대출',           category: '대출',   owner: '본인' },
+  { id: 'kakao-loan',     name: '카카오뱅크 마이너스',    category: '대출',   owner: '본인' },
+  { id: 'kbank-loan',     name: '케이뱅크 마이너스',      category: '대출',   owner: '본인' },
+];
+
+const SEED_SNAPS = [
+  // 2025-12
+  {date:'2025-12',itemId:'nh-check',      capital:0,          debt:null,       note:''},
+  {date:'2025-12',itemId:'nh-savings',    capital:560000,     debt:null,       note:''},
+  {date:'2025-12',itemId:'woori-savings', capital:13500000,   debt:null,       note:''},
+  {date:'2025-12',itemId:'samsung-pension',capital:58310753,  debt:null,       note:''},
+  {date:'2025-12',itemId:'lotte-castle',  capital:950000000,  debt:null,       note:''},
+  {date:'2025-12',itemId:'bmw-620d',      capital:65000000,   debt:34748470,   note:''},
+  {date:'2025-12',itemId:'grandeur',      capital:10000000,   debt:null,       note:''},
+  {date:'2025-12',itemId:'mortgage',      capital:null,       debt:336967906,  note:''},
+  {date:'2025-12',itemId:'kakao-loan',    capital:null,       debt:28248707,   note:''},
+  {date:'2025-12',itemId:'kbank-loan',    capital:null,       debt:75211056,   note:''},
+  // 2026-01
+  {date:'2026-01',itemId:'nh-check',      capital:0,          debt:null,       note:''},
+  {date:'2026-01',itemId:'nh-savings',    capital:580000,     debt:null,       note:''},
+  {date:'2026-01',itemId:'woori-savings', capital:13500000,   debt:null,       note:''},
+  {date:'2026-01',itemId:'samsung-pension',capital:61310753,  debt:null,       note:''},
+  {date:'2026-01',itemId:'lotte-castle',  capital:950000000,  debt:null,       note:''},
+  {date:'2026-01',itemId:'bmw-620d',      capital:65000000,   debt:34748470,   note:''},
+  {date:'2026-01',itemId:'grandeur',      capital:10000000,   debt:null,       note:''},
+  {date:'2026-01',itemId:'mortgage',      capital:null,       debt:336652945,  note:''},
+  {date:'2026-01',itemId:'kakao-loan',    capital:null,       debt:30943320,   note:''},
+  {date:'2026-01',itemId:'kbank-loan',    capital:null,       debt:73812183,   note:''},
+  // 2026-02
+  {date:'2026-02',itemId:'nh-check',      capital:0,          debt:null,       note:''},
+  {date:'2026-02',itemId:'nh-savings',    capital:600000,     debt:null,       note:''},
+  {date:'2026-02',itemId:'woori-savings', capital:13500000,   debt:null,       note:''},
+  {date:'2026-02',itemId:'samsung-pension',capital:64310753,  debt:null,       note:''},
+  {date:'2026-02',itemId:'lotte-castle',  capital:970000000,  debt:null,       note:''},
+  {date:'2026-02',itemId:'bmw-620d',      capital:65000000,   debt:33590091,   note:''},
+  {date:'2026-02',itemId:'grandeur',      capital:10000000,   debt:null,       note:''},
+  {date:'2026-02',itemId:'mortgage',      capital:null,       debt:336336915,  note:'4.05%'},
+  {date:'2026-02',itemId:'kakao-loan',    capital:null,       debt:31838541,   note:'5.83%'},
+  {date:'2026-02',itemId:'kbank-loan',    capital:null,       debt:69696082,   note:'5.77%'},
+  // 2026-06
+  {date:'2026-06',itemId:'nh-check',       capital:340000,     debt:null,       note:''},
+  {date:'2026-06',itemId:'nh-savings',     capital:680000,     debt:null,       note:''},
+  {date:'2026-06',itemId:'woori-savings',  capital:11000000,   debt:null,       note:''},
+  {date:'2026-06',itemId:'samsung-pension',capital:89310000,   debt:null,       note:''},
+  {date:'2026-06',itemId:'lotte-castle',   capital:1000000000, debt:null,       note:''},
+  {date:'2026-06',itemId:'bmw-620d',       capital:65000000,   debt:28960000,   note:''},
+  {date:'2026-06',itemId:'grandeur',       capital:8000000,    debt:null,       note:''},
+  {date:'2026-06',itemId:'mortgage',       capital:null,       debt:335000000,  note:''},
+  {date:'2026-06',itemId:'kakao-loan',     capital:null,       debt:24340000,   note:''},
+  {date:'2026-06',itemId:'kbank-loan',     capital:null,       debt:75590000,   note:''},
+];
+
+// ─── 저장소 ─────────────────────────────────────────────────
+const DB = {
+  items: [],
+  snaps: [],
+
+  load() {
+    const i = localStorage.getItem('at-items');
+    const s = localStorage.getItem('at-snaps');
+    this.items = i ? JSON.parse(i) : DEFAULT_ITEMS.map(x => ({...x}));
+    if (!i) this.saveItems();
+    if (s) {
+      this.snaps = JSON.parse(s);
+      const existingMonths = new Set(this.snaps.map(x => x.date));
+      const newSnaps = SEED_SNAPS.filter(x => !existingMonths.has(x.date));
+      if (newSnaps.length) { this.snaps.push(...newSnaps); this.saveSnaps(); }
+    } else {
+      this.snaps = SEED_SNAPS.map(x => ({...x}));
+      this.saveSnaps();
+    }
+  },
+  saveItems() { localStorage.setItem('at-items', JSON.stringify(this.items)); },
+  saveSnaps()  { localStorage.setItem('at-snaps',  JSON.stringify(this.snaps));  },
+
+  getMonths() {
+    return [...new Set(this.snaps.map(s => s.date))].sort();
+  },
+  getMonthSnaps(date) {
+    return this.snaps.filter(s => s.date === date);
+  },
+  saveMonthSnaps(date, snaps) {
+    this.snaps = this.snaps.filter(s => s.date !== date);
+    this.snaps.push(...snaps);
+    this.saveSnaps();
+  },
+  summary(date) {
+    const list = this.getMonthSnaps(date);
+    let cap = 0, debt = 0;
+    list.forEach(s => { if (s.capital) cap += s.capital; if (s.debt) debt += s.debt; });
+    return { date, totalCapital: cap, totalDebt: debt, netWorth: cap - debt };
+  },
+  allSummaries() {
+    return this.getMonths().map(m => this.summary(m));
+  },
+  getTarget() { return parseFloat(localStorage.getItem('at-target')) || null; },
+  setTarget(v) { localStorage.setItem('at-target', v); },
+};
+
+// ─── 숫자 입력 콤마 포매팅 ──────────────────────────────────────
+function onNumInput(el) {
+  const raw = el.value.replace(/[^0-9]/g, '');
+  if (raw === '') { el.value = ''; return; }
+  const cursor = el.selectionStart;
+  const prevCommas = (el.value.slice(0, cursor).match(/,/g) || []).length;
+  el.value = Number(raw).toLocaleString('ko-KR');
+  // 커서 위치 보정 (콤마 추가/제거로 밀리는 것 방지)
+  const newCommas = (el.value.slice(0, cursor).match(/,/g) || []).length;
+  const newPos = Math.min(cursor + (newCommas - prevCommas), el.value.length);
+  el.setSelectionRange(newPos, newPos);
+}
+
+function parseNum(val) {
+  if (!val && val !== 0) return null;
+  const n = parseFloat(String(val).replace(/,/g, ''));
+  return isNaN(n) ? null : n;
+}
+
+// ─── 유틸 ────────────────────────────────────────────────────
+const ITEM_COLORS = ['#00d2ff','#a78bfa','#f59e0b','#3fb950','#f87171','#34d399','#fb923c','#60a5fa','#e879f9','#fbbf24'];
+
+function fWon(n) {
+  if (n == null || n === '') return '-';
+  const a = Math.abs(n), s = n < 0 ? '-' : '';
+  if (a >= 1e8) return s + (a / 1e8).toFixed(2) + '억';
+  if (a >= 1e4) return s + Math.round(a / 1e4).toLocaleString() + '만';
+  return s + a.toLocaleString();
+}
+function fFull(n) {
+  if (n == null) return '-';
+  return (n < 0 ? '-' : '') + '₩' + Math.abs(n).toLocaleString();
+}
+function mLabel(yyyymm) {
+  const [y, m] = yyyymm.split('-');
+  return `${y}년 ${parseInt(m)}월`;
+}
+function nowMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function prevMonth(yyyymm) {
+  const [y, m] = yyyymm.split('-').map(Number);
+  return m === 1 ? `${y-1}-12` : `${y}-${String(m-1).padStart(2,'0')}`;
+}
+function toast(msg, ok = true) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = ok ? '#3fb950' : '#f85149';
+  el.style.color = ok ? '#000' : '#fff';
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ─── 차트 ────────────────────────────────────────────────────
+let _charts = {};
+function destroyCharts() {
+  Object.values(_charts).forEach(c => c?.destroy());
+  _charts = {};
+}
+
+const chartDefaults = {
+  plugins: { legend: { labels: { color: '#8b949e', font: { size: 11 }, boxWidth: 12 } } },
+  scales: {
+    x: { ticks: { color: '#8b949e', font: { size: 10 } }, grid: { color: '#1e242c' } },
+    y: { ticks: { color: '#8b949e', font: { size: 10 }, callback: v => fWon(v) }, grid: { color: '#1e242c' } },
+  },
+};
+
+function buildNetWorthChart() {
+  const s = DB.allSummaries();
+  if (!s.length) return;
+  const ctx = document.getElementById('c-net');
+  if (!ctx) return;
+  const target = DB.getTarget();
+  const datasets = [
+    { label: '순자산', data: s.map(x => x.netWorth), borderColor: '#00d2ff', backgroundColor: 'rgba(0,210,255,.08)', fill: true, tension: 0.4, pointRadius: 5 },
+    { label: '총자산', data: s.map(x => x.totalCapital), borderColor: '#3fb950', backgroundColor: 'transparent', tension: 0.4, pointRadius: 3, borderDash: [5,3] },
+    { label: '총부채', data: s.map(x => x.totalDebt), borderColor: '#f85149', backgroundColor: 'transparent', tension: 0.4, pointRadius: 3, borderDash: [5,3] },
+  ];
+  if (target) {
+    datasets.push({ label: `목표 ${fWon(target)}`, data: s.map(() => target), borderColor: '#f59e0b', backgroundColor: 'transparent', borderDash: [8,4], pointRadius: 0, borderWidth: 1.5 });
+  }
+  _charts.net = new Chart(ctx, {
+    type: 'line',
+    data: { labels: s.map(x => mLabel(x.date)), datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { ...chartDefaults.plugins, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fFull(c.raw)}` } } },
+      scales: chartDefaults.scales,
+    },
+  });
+}
+
+function buildDonutChart() {
+  const months = DB.getMonths();
+  if (!months.length) return;
+  const s = DB.summary(months[months.length-1]);
+  const ctx = document.getElementById('c-donut');
+  if (!ctx) return;
+  _charts.donut = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['순자산', '부채'],
+      datasets: [{ data: [s.netWorth, s.totalDebt], backgroundColor: ['#00d2ff','#f85149'], borderColor: '#161b22', borderWidth: 4 }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '65%',
+      plugins: { legend: { labels: { color: '#8b949e', font: { size: 11 } } }, tooltip: { callbacks: { label: c => ` ${c.label}: ${fFull(c.raw)}` } } },
+    },
+  });
+}
+
+function buildCategoryChart() {
+  const months = DB.getMonths();
+  if (!months.length) return;
+  const catData = getCategoryData(months[months.length - 1]);
+  const ctx = document.getElementById('c-category');
+  if (!ctx) return;
+  const entries = Object.entries(catData).sort((a,b) => b[1] - a[1]);
+  const CAT_COLORS = { '부동산':'#7c3aed','예금':'#00d2ff','연금':'#3fb950','차량':'#f59e0b','대출':'#f85149','기타':'#8b949e' };
+  _charts.category = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: entries.map(([k]) => k),
+      datasets: [{
+        data: entries.map(([,v]) => v),
+        backgroundColor: entries.map(([k]) => CAT_COLORS[k] || '#8b949e'),
+        borderRadius: 6,
+        borderSkipped: false,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => ` ${fFull(c.raw)}` } },
+      },
+      scales: {
+        x: { ticks: { color:'#8b949e', font:{size:10}, callback: v => fWon(v) }, grid:{color:'#1e242c'} },
+        y: { ticks: { color:'#8b949e', font:{size:11} }, grid:{display:false} },
+      },
+    },
+  });
+}
+
+function buildYearlyChart() {
+  const data = getYearlyData();
+  if (!data.length) return;
+  const ctx = document.getElementById('c-yearly');
+  if (!ctx) return;
+  _charts.yearly = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d.year + '년'),
+      datasets: [
+        { label: '순자산', data: data.map(d => d.netWorth), backgroundColor: 'rgba(0,210,255,.7)', borderRadius: 6, borderSkipped: false },
+        { label: '총부채', data: data.map(d => d.totalDebt), backgroundColor: 'rgba(248,81,73,.5)', borderRadius: 6, borderSkipped: false },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color:'#8b949e', font:{size:11}, boxWidth:12 } },
+        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fFull(c.raw)}` } },
+      },
+      scales: {
+        x: { ticks:{color:'#8b949e',font:{size:10}}, grid:{color:'#1e242c'} },
+        y: { ticks:{color:'#8b949e',font:{size:10},callback:v=>fWon(v)}, grid:{color:'#1e242c'} },
+      },
+    },
+  });
+}
+
+function buildDebtRatioChart() {
+  const summaries = DB.allSummaries();
+  if (!summaries.length) return;
+  const ctx = document.getElementById('c-debtratio');
+  if (!ctx) return;
+  _charts.debtRatio = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: summaries.map(s => mLabel(s.date)),
+      datasets: [{
+        label: '부채비율 (%)',
+        data: summaries.map(s => s.totalCapital ? +(s.totalDebt / s.totalCapital * 100).toFixed(1) : 0),
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245,158,11,.08)',
+        fill: true, tension: 0.4, pointRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => ` 부채비율: ${c.raw}%` } },
+      },
+      scales: {
+        x: { ticks:{color:'#8b949e',font:{size:10}}, grid:{color:'#1e242c'} },
+        y: { ticks:{color:'#8b949e',font:{size:10},callback:v=>v+'%'}, grid:{color:'#1e242c'} },
+      },
+    },
+  });
+}
+
+let _trendItems = new Set();
+
+function buildTrendChart() {
+  const months = DB.getMonths();
+  const ctx = document.getElementById('c-trend');
+  if (!ctx || !months.length || !_trendItems.size) return;
+  if (_charts.trend) { _charts.trend.destroy(); _charts.trend = null; }
+
+  const items = DB.items.filter(i => _trendItems.has(i.id));
+  _charts.trend = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: months.map(mLabel),
+      datasets: items.map((item, idx) => ({
+        label: item.name,
+        data: months.map(m => {
+          const s = DB.snaps.find(x => x.date === m && x.itemId === item.id);
+          if (!s) return null;
+          return (s.capital || 0) - (s.debt || 0);
+        }),
+        borderColor: ITEM_COLORS[idx % ITEM_COLORS.length],
+        backgroundColor: 'transparent',
+        tension: 0.4, pointRadius: 4, spanGaps: true,
+      })),
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { ...chartDefaults.plugins, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fFull(c.raw)}` } } },
+      scales: chartDefaults.scales,
+    },
+  });
+}
+
+// ─── 분석 함수 ───────────────────────────────────────────────
+function calcStats() {
+  const summaries = DB.allSummaries();
+  if (!summaries.length) return {};
+  const latest = summaries[summaries.length - 1];
+
+  // 월평균 순자산 증가
+  let avgMonthly = 0;
+  if (summaries.length >= 2) {
+    const first = summaries[0], last = summaries[summaries.length - 1];
+    const [fy, fm] = first.date.split('-').map(Number);
+    const [ly, lm] = last.date.split('-').map(Number);
+    const months = (ly - fy) * 12 + (lm - fm);
+    avgMonthly = months > 0 ? (last.netWorth - first.netWorth) / months : 0;
+  }
+
+  // 연간 이자 비용 (note 필드의 금리 파싱)
+  let annualInterest = 0;
+  DB.getMonthSnaps(latest.date).forEach(s => {
+    if (!s.debt || !s.note) return;
+    const m = String(s.note).match(/(\d+\.?\d*)\s*%/);
+    if (m) annualInterest += s.debt * parseFloat(m[1]) / 100;
+  });
+
+  // YoY (전년 동월)
+  const [ly, lm] = latest.date.split('-').map(Number);
+  const yoyDate = `${ly - 1}-${String(lm).padStart(2,'0')}`;
+  const yoyMonths = DB.getMonths();
+  let yoyNet = null;
+  if (yoyMonths.includes(yoyDate)) {
+    yoyNet = DB.summary(yoyDate).netWorth;
+  } else {
+    // 전년도 가장 가까운 달 찾기
+    const candidates = yoyMonths.filter(m => m.startsWith(String(ly - 1)));
+    if (candidates.length) yoyNet = DB.summary(candidates[candidates.length - 1]).netWorth;
+  }
+
+  return { avgMonthly, annualInterest, yoyNet, latest, summaries };
+}
+
+function getCategoryData(month) {
+  const snaps = DB.getMonthSnaps(month);
+  const cats = {};
+  DB.items.forEach(item => {
+    const snap = snaps.find(s => s.itemId === item.id);
+    if (!snap) return;
+    const net = (snap.capital || 0) - (snap.debt || 0);
+    cats[item.category] = (cats[item.category] || 0) + net;
+  });
+  return cats;
+}
+
+function getYearlyData() {
+  const months = DB.getMonths();
+  const yearMap = {};
+  months.forEach(m => {
+    const y = m.split('-')[0];
+    if (!yearMap[y] || m > yearMap[y]) yearMap[y] = m;
+  });
+  return Object.entries(yearMap).sort().map(([year, month]) => ({
+    year, ...DB.summary(month), month
+  }));
+}
+
+// ─── 인사이트 생성 ───────────────────────────────────────────
+function buildInsight(latest, prev) {
+  if (!latest || !prev) return '';
+
+  const netDiff    = latest.netWorth    - prev.netWorth;
+  const capDiff    = latest.totalCapital - prev.totalCapital;
+  const debtDiff   = latest.totalDebt   - prev.totalDebt;
+  const prevRatio  = prev.totalCapital  ? (prev.totalDebt  / prev.totalCapital  * 100) : 0;
+  const latestRatio= latest.totalCapital? (latest.totalDebt / latest.totalCapital * 100) : 0;
+  const ratioDiff  = latestRatio - prevRatio;
+
+  // 항목별 변화 계산
+  const latestSnaps = DB.getMonthSnaps(latest.date);
+  const prevSnaps   = DB.getMonthSnaps(prev.date);
+
+  const itemChanges = DB.items.map(item => {
+    const l = latestSnaps.find(s => s.itemId === item.id);
+    const p = prevSnaps.find(s => s.itemId === item.id);
+    const lNet = l ? (l.capital||0) - (l.debt||0) : 0;
+    const pNet = p ? (p.capital||0) - (p.debt||0) : 0;
+    return { name: item.name, category: item.category, diff: lNet - pNet };
+  }).filter(x => x.diff !== 0).sort((a,b) => Math.abs(b.diff) - Math.abs(a.diff));
+
+  const lines = [];
+
+  // 순자산 총평
+  const netSign = netDiff >= 0 ? '증가' : '감소';
+  lines.push(`${mLabel(prev.date)} 대비 순자산이 <b>${fWon(Math.abs(netDiff))} ${netSign}</b>했어요.`);
+
+  // 주요 변화 항목 (상위 3개)
+  const movers = itemChanges.slice(0, 3);
+  if (movers.length) {
+    const parts = movers.map(x => {
+      const sign = x.diff > 0 ? '↑' : '↓';
+      return `${x.name} ${sign}${fWon(Math.abs(x.diff))}`;
+    });
+    lines.push(`주요 변화: ${parts.join(', ')}`);
+  }
+
+  // 부채 변화
+  if (Math.abs(debtDiff) > 0) {
+    const debtSign = debtDiff < 0 ? `<b>${fWon(Math.abs(debtDiff))} 상환</b>` : `<b>${fWon(Math.abs(debtDiff))} 증가</b>`;
+    lines.push(`부채는 ${debtSign}했어요.`);
+  }
+
+  // 부채비율
+  if (Math.abs(ratioDiff) >= 0.1) {
+    const dir = ratioDiff < 0 ? '개선' : '악화';
+    lines.push(`부채비율 ${prevRatio.toFixed(1)}% → ${latestRatio.toFixed(1)}% (${Math.abs(ratioDiff).toFixed(1)}%p ${dir})`);
+  }
+
+  // 3개월 연속 방향 체크
+  const summaries = DB.allSummaries();
+  if (summaries.length >= 3) {
+    const last3 = summaries.slice(-3).map(s => s.netWorth);
+    if (last3[0] < last3[1] && last3[1] < last3[2]) lines.push('3개월 연속 순자산 상승 중이에요. 🔥');
+    else if (last3[0] > last3[1] && last3[1] > last3[2]) lines.push('3개월 연속 순자산 하락 중이에요.');
+  }
+
+  // YoY
+  const { avgMonthly, yoyNet } = calcStats();
+  if (yoyNet !== null) {
+    const yoyDiff = latest.netWorth - yoyNet;
+    const yoySign = yoyDiff >= 0 ? '▲' : '▼';
+    lines.push(`전년 동월 대비 ${yoySign} <b>${fWon(Math.abs(yoyDiff))}</b> (${yoyDiff >= 0 ? '+' : ''}${((yoyDiff/yoyNet)*100).toFixed(1)}%)`);
+  }
+
+  // 목표 달성 예상
+  const target = DB.getTarget();
+  if (target && avgMonthly > 0 && latest.netWorth < target) {
+    const remaining = target - latest.netWorth;
+    const months = Math.ceil(remaining / avgMonthly);
+    const [y, m] = latest.date.split('-').map(Number);
+    const arrivalMonth = new Date(y, m - 1 + months);
+    const arrivalStr = `${arrivalMonth.getFullYear()}년 ${arrivalMonth.getMonth() + 1}월`;
+    lines.push(`목표(${fWon(target)}) 달성까지 약 <b>${months}개월</b> → ${arrivalStr} 예상`);
+  }
+
+  const isPositive = netDiff >= 0;
+  return `
+    <div class="insight-box ${isPositive ? 'pos' : 'neg'}">
+      <div class="insight-title">${isPositive ? '📈' : '📉'} 이번 달 인사이트</div>
+      ${lines.map(l => `<div class="insight-line">• ${l}</div>`).join('')}
+    </div>
+  `;
+}
+
+// ─── 뷰: 대시보드 ────────────────────────────────────────────
+function viewDashboard() {
+  destroyCharts();
+  const summaries = DB.allSummaries();
+  const latest = summaries[summaries.length - 1];
+  const prev   = summaries[summaries.length - 2];
+
+  const delta = (curr, p) => {
+    if (!p) return '';
+    const d = curr - p;
+    return `<div class="delta ${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '▲' : '▼'} ${fWon(Math.abs(d))} (전월 대비)</div>`;
+  };
+
+  if (!_trendItems.size) DB.items.slice(0, 3).forEach(i => _trendItems.add(i.id));
+
+  const toggles = DB.items.map(i =>
+    `<button class="tog ${_trendItems.has(i.id) ? 'on' : ''}" onclick="toggleTrend('${i.id}')">${i.name}</button>`
+  ).join('');
+
+  const { avgMonthly, annualInterest, yoyNet } = calcStats();
+  const target = DB.getTarget();
+  const debtRatio = latest ? (latest.totalDebt / latest.totalCapital * 100).toFixed(1) : '-';
+
+  // 목표 진행률
+  const goalPct = (target && latest) ? Math.min(100, latest.netWorth / target * 100) : null;
+
+  // 스탯 카드 값
+  const avgCard = avgMonthly
+    ? `<div class="stat-value ${avgMonthly >= 0 ? 'pos' : 'neg'}">${avgMonthly >= 0 ? '+' : ''}${fWon(avgMonthly)}</div><div class="stat-sub">월평균</div>`
+    : `<div class="stat-value">-</div>`;
+
+  const interestCard = annualInterest
+    ? `<div class="stat-value warn">${fWon(annualInterest)}</div><div class="stat-sub">연간 이자</div>`
+    : `<div class="stat-value">-</div><div class="stat-sub">연간 이자</div>`;
+
+  const yoyCard = yoyNet !== null
+    ? (() => {
+        const d = latest.netWorth - yoyNet;
+        return `<div class="stat-value ${d >= 0 ? 'pos' : 'neg'}">${d >= 0 ? '+' : ''}${fWon(d)}</div><div class="stat-sub">전년 동월比</div>`;
+      })()
+    : `<div class="stat-value">-</div><div class="stat-sub">전년 동월比</div>`;
+
+  document.getElementById('app').innerHTML = `
+    <h1>자산 현황</h1>
+    <p class="subtitle">${latest ? mLabel(latest.date) + ' 기준' : '데이터 없음'}</p>
+
+    <div class="cards">
+      <div class="card full">
+        <div class="card-label">순자산</div>
+        <div class="card-value accent">${latest ? fWon(latest.netWorth) : '-'}</div>
+        ${latest && prev ? delta(latest.netWorth, prev.netWorth) : ''}
+      </div>
+      <div class="card">
+        <div class="card-label">총자산</div>
+        <div class="card-value">${latest ? fWon(latest.totalCapital) : '-'}</div>
+        ${latest && prev ? delta(latest.totalCapital, prev.totalCapital) : ''}
+      </div>
+      <div class="card">
+        <div class="card-label">총부채 (${debtRatio}%)</div>
+        <div class="card-value">${latest ? fWon(latest.totalDebt) : '-'}</div>
+        ${latest && prev ? delta(latest.totalDebt, prev.totalDebt) : ''}
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">월평균 증가</div>${avgCard}</div>
+      <div class="stat-card"><div class="stat-label">연간 이자</div>${interestCard}</div>
+      <div class="stat-card"><div class="stat-label">YoY</div>${yoyCard}</div>
+    </div>
+
+    ${goalPct !== null ? `
+    <div class="goal-wrap">
+      <div class="goal-header">
+        <span class="goal-title">목표 순자산 달성률</span>
+        <span class="goal-pct">${goalPct.toFixed(1)}%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" style="width:${goalPct}%"></div></div>
+      <div class="goal-meta">
+        <span>현재 ${fWon(latest.netWorth)}</span>
+        <span>목표 ${fWon(target)}</span>
+      </div>
+    </div>` : ''}
+
+    ${buildInsight(latest, prev)}
+
+    <div class="chart-wrap">
+      <div class="chart-title">순자산 추이${target ? ' (목표선 포함)' : ''}</div>
+      <div class="chart-box"><canvas id="c-net"></canvas></div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-title">카테고리별 순자산 기여</div>
+      <div class="chart-box" style="height:${Math.max(160, Object.keys(getCategoryData(latest?.date||'')).length * 36)}px"><canvas id="c-category"></canvas></div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-title">연도별 연말 순자산</div>
+      <div class="chart-box"><canvas id="c-yearly"></canvas></div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-title">부채비율 추이</div>
+      <div class="chart-box sm"><canvas id="c-debtratio"></canvas></div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-title">자산 구성 (최신월)</div>
+      <div class="chart-box sm"><canvas id="c-donut"></canvas></div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-title">항목별 순기여 추이</div>
+      <div class="toggles">${toggles}</div>
+      <div class="chart-box"><canvas id="c-trend"></canvas></div>
+    </div>
+  `;
+
+  requestAnimationFrame(() => {
+    buildNetWorthChart();
+    buildCategoryChart();
+    buildYearlyChart();
+    buildDebtRatioChart();
+    buildDonutChart();
+    buildTrendChart();
+  });
+}
+
+function toggleTrend(id) {
+  _trendItems.has(id) ? _trendItems.delete(id) : _trendItems.add(id);
+  viewDashboard();
+}
+
+// ─── 뷰: 입력 ────────────────────────────────────────────────
+let _inputMonth = nowMonth();
+
+function viewInput(month) {
+  if (month) _inputMonth = month;
+
+  const existing = DB.getMonthSnaps(_inputMonth);
+  const prev     = DB.getMonthSnaps(prevMonth(_inputMonth));
+
+  const isNewMonth = existing.length === 0;
+
+  // 현재 달 데이터가 있으면 그 값, 없으면 빈 값
+  const val = (id, field) => {
+    const e = existing.find(s => s.itemId === id);
+    if (e && e[field] != null) return Number(e[field]).toLocaleString('ko-KR');
+    return '';
+  };
+
+  // 이전 달 값을 placeholder로 (연하게 보이는 참고값)
+  const hint = (id, field) => {
+    const p = prev.find(s => s.itemId === id);
+    if (p && p[field] != null) return Number(p[field]).toLocaleString('ko-KR');
+    return '';
+  };
+
+  const assetItems = DB.items.filter(i => i.category !== '대출');
+  const debtItems  = DB.items.filter(i => i.category === '대출');
+
+  const rows = list => list.map(i => `
+    <div class="irow">
+      <div class="iname">
+        ${i.name}
+        ${i.owner !== '본인' ? `<div class="badge">${i.owner}</div>` : ''}
+      </div>
+      <div class="ifields">
+        <input type="text" id="c-${i.id}" placeholder="${hint(i.id,'capital') || '자본'}" value="${val(i.id,'capital')}" class="num" oninput="onNumInput(this)" inputmode="numeric">
+        <input type="text" id="d-${i.id}" placeholder="${hint(i.id,'debt')    || '부채'}" value="${val(i.id,'debt')}"    class="num" oninput="onNumInput(this)" inputmode="numeric">
+        <input type="text" id="n-${i.id}" placeholder="${hint(i.id,'note')    || '비고'}" value="${val(i.id,'note')}"    class="note-input">
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('app').innerHTML = `
+    <h1>데이터 입력</h1>
+    <p class="subtitle">이전 달 값이 자동으로 채워집니다</p>
+
+    <input type="month" class="month-picker" value="${_inputMonth}" onchange="_inputMonth=this.value;viewInput()">
+
+    <div class="col-headers">
+      <div class="spacer"></div>
+      <span>자본 (₩)</span>
+      <span>부채 (₩)</span>
+      <span class="note-h">비고</span>
+    </div>
+
+    <div class="input-block">
+      <div class="section-label">자산 항목</div>
+      ${rows(assetItems)}
+    </div>
+
+    <div class="input-block">
+      <div class="section-label">부채 항목</div>
+      ${rows(debtItems)}
+    </div>
+
+    <button class="save-btn" onclick="saveMonth()">저장</button>
+  `;
+}
+
+function saveMonth() {
+  const prevSnaps = DB.getMonthSnaps(prevMonth(_inputMonth));
+
+  const carry = (id, field) => {
+    const p = prevSnaps.find(s => s.itemId === id);
+    return p ? (p[field] ?? null) : null;
+  };
+
+  const snaps = DB.items.map(i => {
+    const capRaw  = document.getElementById(`c-${i.id}`)?.value.trim();
+    const debtRaw = document.getElementById(`d-${i.id}`)?.value.trim();
+    const noteRaw = document.getElementById(`n-${i.id}`)?.value.trim();
+    return {
+      date:    _inputMonth,
+      itemId:  i.id,
+      capital: capRaw  ? parseNum(capRaw)  : carry(i.id, 'capital'),
+      debt:    debtRaw ? parseNum(debtRaw) : carry(i.id, 'debt'),
+      note:    noteRaw || carry(i.id, 'note') || '',
+    };
+  }).filter(s => s.capital !== null || s.debt !== null || s.note);
+
+  DB.saveMonthSnaps(_inputMonth, snaps);
+  toast('저장됐어요!');
+}
+
+// ─── 뷰: 기록 ────────────────────────────────────────────────
+let _histDetail = null;
+
+function viewHistory() {
+  if (_histDetail) { viewHistoryDetail(_histDetail); return; }
+
+  const months = DB.getMonths().reverse();
+  document.getElementById('app').innerHTML = `
+    <h1>기록</h1>
+    <p class="subtitle">월별 스냅샷</p>
+    <div class="month-list">
+      ${!months.length ? '<p class="empty">기록이 없습니다</p>' : months.map(m => {
+        const s = DB.summary(m);
+        return `<div class="mitem" onclick="_histDetail='${m}';viewHistory()">
+          <div>
+            <div class="mitem-main">${mLabel(m)}</div>
+            <div class="mitem-sub">자산 ${fWon(s.totalCapital)} · 부채 ${fWon(s.totalDebt)}</div>
+          </div>
+          <div class="mitem-net">${fWon(s.netWorth)}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+function viewHistoryDetail(month) {
+  const snaps = DB.getMonthSnaps(month);
+  const s = DB.summary(month);
+
+  const rows = DB.items.map(item => {
+    const snap = snaps.find(x => x.itemId === item.id);
+    if (!snap) return '';
+    const net = (snap.capital || 0) - (snap.debt || 0);
+    return `<tr>
+      <td>${item.name}${item.owner !== '본인' ? ` <span style="color:var(--muted);font-size:11px">(${item.owner})</span>` : ''}</td>
+      <td>${snap.capital ? fWon(snap.capital) : '-'}</td>
+      <td>${snap.debt    ? fWon(snap.debt)    : '-'}</td>
+      <td style="color:${net >= 0 ? 'var(--accent)' : 'var(--red)'}">${fWon(net)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('app').innerHTML = `
+    <button class="back-btn" onclick="_histDetail=null;viewHistory()">← 목록으로</button>
+    <h1>${mLabel(month)}</h1>
+    <p class="subtitle">순자산 <span style="color:var(--accent);font-weight:700">${fWon(s.netWorth)}</span></p>
+
+    <div class="tbl-wrap">
+      <table class="htable">
+        <thead><tr><th>항목</th><th>자본</th><th>부채</th><th>순자산</th></tr></thead>
+        <tbody>
+          ${rows}
+          <tr class="total">
+            <td>합계</td>
+            <td>${fWon(s.totalCapital)}</td>
+            <td>${fWon(s.totalDebt)}</td>
+            <td style="color:var(--accent)">${fWon(s.netWorth)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <button class="action-btn" onclick="App.go('input','${month}')">✏️ 이 월 수정하기</button>
+  `;
+}
+
+// ─── 뷰: 설정 ────────────────────────────────────────────────
+function viewSettings() {
+  document.getElementById('app').innerHTML = `
+    <h1>설정</h1>
+    <p class="subtitle">항목 관리 및 데이터 백업</p>
+
+    <div class="settings-section">
+      <div class="settings-title">자산/부채 항목</div>
+      <div class="item-list" id="item-list">
+        ${DB.items.map((i, idx) => `
+          <div class="item-row" draggable="true"
+            ondragstart="onDragStart(event,${idx})"
+            ondragend="onDragEnd(event)"
+            ondragover="onDragOver(event,${idx})"
+            ondrop="onDrop(event,${idx})">
+            <span class="drag-handle" title="드래그해서 순서 변경">⠿</span>
+            <div class="item-name">${i.name} ${i.owner !== '본인' ? `<span style="font-size:11px;color:var(--muted)">(${i.owner})</span>` : ''}</div>
+            <span class="cat-badge">${i.category}</span>
+            <button class="del-btn" onclick="delItem('${i.id}')">×</button>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="add-form">
+        <input type="text"   id="ni-name"     placeholder="항목명 (예: 신한은행 적금)">
+        <select id="ni-cat">
+          <option value="예금">예금</option>
+          <option value="연금">연금</option>
+          <option value="부동산">부동산</option>
+          <option value="차량">차량</option>
+          <option value="대출">대출</option>
+          <option value="기타">기타</option>
+        </select>
+        <input type="text" id="ni-owner" placeholder="소유자 (본인 / 경화 등)" value="본인">
+        <button class="add-btn" onclick="addItem()">+ 항목 추가</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-title">목표 순자산</div>
+      <div class="add-form" style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="goal-input" class="num" inputmode="numeric" oninput="onNumInput(this)"
+          placeholder="목표 순자산 (예: 1,000,000,000)"
+          value="${DB.getTarget() ? Number(DB.getTarget()).toLocaleString('ko-KR') : ''}"
+          style="margin-bottom:0;flex:1">
+        <button class="add-btn" onclick="saveGoal()" style="width:auto;padding:10px 16px;margin-bottom:0;flex-shrink:0">저장</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;padding:0 2px">설정하면 대시보드에 진행률 바와 목표선이 표시됩니다.</div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-title">데이터 백업</div>
+      <button class="action-btn" onclick="exportJSON()">📥 JSON으로 내보내기</button>
+      <button class="action-btn" onclick="document.getElementById('fi').click()">📤 JSON 가져오기</button>
+      <input type="file" id="fi" accept=".json" style="display:none" onchange="importJSON(this)">
+      <button class="action-btn" onclick="resetData()" style="color:var(--red)">⚠️ 데이터 초기화</button>
+    </div>
+  `;
+}
+
+// ─── 드래그 앤 드롭 순서 변경 ────────────────────────────────
+let _dragIdx = null;
+
+function onDragStart(e, idx) {
+  _dragIdx = idx;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function onDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.item-row').forEach(r => r.classList.remove('drag-over'));
+}
+
+function onDragOver(e, idx) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.item-row').forEach(r => r.classList.remove('drag-over'));
+  e.currentTarget.classList.add('drag-over');
+}
+
+function onDrop(e, idx) {
+  e.preventDefault();
+  if (_dragIdx === null || _dragIdx === idx) return;
+  const items = [...DB.items];
+  const [moved] = items.splice(_dragIdx, 1);
+  items.splice(idx, 0, moved);
+  DB.items = items;
+  DB.saveItems();
+  _dragIdx = null;
+  viewSettings();
+}
+
+function saveGoal() {
+  const raw = document.getElementById('goal-input')?.value;
+  const v = parseNum(raw);
+  if (!v || v <= 0) { toast('올바른 금액을 입력해주세요', false); return; }
+  DB.setTarget(v);
+  toast(`목표 ${fWon(v)} 저장됐어요!`);
+}
+
+function addItem() {
+  const name  = document.getElementById('ni-name').value.trim();
+  const cat   = document.getElementById('ni-cat').value;
+  const owner = document.getElementById('ni-owner').value.trim() || '본인';
+  if (!name) { toast('항목명을 입력해주세요', false); return; }
+  DB.items.push({ id: 'i-' + Date.now(), name, category: cat, owner });
+  DB.saveItems();
+  toast('항목이 추가됐어요');
+  viewSettings();
+}
+
+function delItem(id) {
+  if (!confirm('이 항목과 연결된 모든 데이터가 삭제됩니다.\n계속할까요?')) return;
+  DB.items = DB.items.filter(i => i.id !== id);
+  DB.snaps = DB.snaps.filter(s => s.itemId !== id);
+  DB.saveItems(); DB.saveSnaps();
+  toast('삭제됐어요');
+  viewSettings();
+}
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify({ version:1, exportedAt: new Date().toISOString(), items: DB.items, snaps: DB.snaps }, null, 2)], { type:'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `asset-backup-${nowMonth()}.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importJSON(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = e => {
+    try {
+      const d = JSON.parse(e.target.result);
+      if (!d.items || !d.snaps) throw new Error();
+      DB.items = d.items; DB.snaps = d.snaps;
+      DB.saveItems(); DB.saveSnaps();
+      toast('가져오기 완료!');
+      viewSettings();
+    } catch { toast('파일 형식이 올바르지 않아요', false); }
+  };
+  r.readAsText(file);
+}
+
+function resetData() {
+  if (!confirm('모든 데이터가 삭제되고 초기값으로 되돌아갑니다.\n정말 초기화할까요?')) return;
+  localStorage.removeItem('at-items');
+  localStorage.removeItem('at-snaps');
+  DB.load();
+  toast('초기화됐어요');
+  viewSettings();
+}
+
+// ─── 앱 ─────────────────────────────────────────────────────
+const App = {
+  go(view, arg) {
+    _histDetail = null;
+    ['dashboard','input','history','settings'].forEach(v =>
+      document.getElementById(`nav-${v}`)?.classList.toggle('active', v === view)
+    );
+    if (view === 'dashboard') viewDashboard();
+    else if (view === 'input')   viewInput(arg);
+    else if (view === 'history') viewHistory();
+    else if (view === 'settings') viewSettings();
+    window.scrollTo(0, 0);
+  },
+  init() {
+    DB.load();
+    this.go('dashboard');
+  },
+};
+
+App.init();
+</script>
+</body>
+</html>
