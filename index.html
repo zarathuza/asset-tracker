@@ -141,6 +141,14 @@
     /* ── 토스트 ── */
     .toast { position: fixed; bottom: 92px; left: 50%; transform: translateX(-50%); padding: 10px 22px; border-radius: 20px; font-size: 14px; font-weight: 600; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 200; white-space: nowrap; }
     .toast.show { opacity: 1; }
+
+    /* ── GitHub 동기화 ── */
+    .sync-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+    .sync-dot.ok { background: var(--green); }
+    .sync-dot.off { background: var(--muted); }
+    .sync-dot.err { background: var(--red); }
+    .sync-dot.spin { background: var(--accent); animation: pulse .8s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
   </style>
 </head>
 <body>
@@ -274,6 +282,72 @@ const DB = {
   },
   getTarget() { return parseFloat(localStorage.getItem('at-target')) || null; },
   setTarget(v) { localStorage.setItem('at-target', v); },
+};
+
+// ─── GitHub 동기화 ───────────────────────────────────────────
+const GH = {
+  owner: 'zarathuza',
+  repo:  'asset-tracker',
+  file:  'data.json',
+
+  getToken()   { return localStorage.getItem('at-gh-token'); },
+  setToken(t)  { localStorage.setItem('at-gh-token', t.trim()); },
+  getSha()     { return localStorage.getItem('at-gh-sha'); },
+  setSha(s)    { localStorage.setItem('at-gh-sha', s); },
+  getLastSync(){ return localStorage.getItem('at-gh-sync'); },
+  setLastSync(){ localStorage.setItem('at-gh-sync', new Date().toLocaleString('ko-KR')); },
+
+  headers() {
+    return {
+      Authorization: `token ${this.getToken()}`,
+      Accept: 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json',
+    };
+  },
+
+  async pull() {
+    if (!this.getToken()) return null;
+    try {
+      const res = await fetch(
+        `https://api.github.com/repos/${this.owner}/${this.repo}/contents/${this.file}`,
+        { headers: this.headers() }
+      );
+      if (res.status === 404) return 'empty';
+      if (!res.ok) return 'error';
+      const json = await res.json();
+      this.setSha(json.sha);
+      const data = JSON.parse(decodeURIComponent(escape(atob(json.content.replace(/\n/g,'')))));
+      if (data.items) DB.items = data.items;
+      if (data.snaps) {
+        const ghMonths = new Set(data.snaps.map(s => s.date));
+        const localOnly = DB.snaps.filter(s => !ghMonths.has(s.date));
+        DB.snaps = [...data.snaps, ...localOnly];
+      }
+      DB.saveItems(); DB.saveSnaps();
+      this.setLastSync();
+      return 'ok';
+    } catch(e) { console.error('GH pull', e); return 'error'; }
+  },
+
+  async push() {
+    if (!this.getToken()) return false;
+    try {
+      const raw  = JSON.stringify({ version:1, items: DB.items, snaps: DB.snaps }, null, 2);
+      const content = btoa(unescape(encodeURIComponent(raw)));
+      const sha  = this.getSha();
+      const res  = await fetch(
+        `https://api.github.com/repos/${this.owner}/${this.repo}/contents/${this.file}`,
+        { method:'PUT', headers: this.headers(),
+          body: JSON.stringify({ message:`자산 업데이트 ${nowMonth()}`, content, ...(sha ? { sha } : {}) }) }
+      );
+      if (res.status === 409) { await this.pull(); return this.push(); }
+      if (!res.ok) return false;
+      const json = await res.json();
+      this.setSha(json.content.sha);
+      this.setLastSync();
+      return true;
+    } catch(e) { console.error('GH push', e); return false; }
+  },
 };
 
 // ─── 숫자 입력 콤마 포매팅 ──────────────────────────────────────
@@ -867,7 +941,7 @@ function viewInput(month) {
   `;
 }
 
-function saveMonth() {
+async function saveMonth() {
   const prevSnaps = DB.getMonthSnaps(prevMonth(_inputMonth));
 
   const carry = (id, field) => {
@@ -889,7 +963,13 @@ function saveMonth() {
   }).filter(s => s.capital !== null || s.debt !== null || s.note);
 
   DB.saveMonthSnaps(_inputMonth, snaps);
-  toast('저장됐어요!');
+  if (GH.getToken()) {
+    toast('저장 중...');
+    const ok = await GH.push();
+    toast(ok ? '저장 & GitHub 동기화 완료!' : '로컬 저장됨 (GitHub 동기화 실패)', ok);
+  } else {
+    toast('저장됐어요!');
+  }
 }
 
 // ─── 뷰: 기록 ────────────────────────────────────────────────
@@ -1008,6 +1088,29 @@ function viewSettings() {
     </div>
 
     <div class="settings-section">
+      <div class="settings-title">GitHub 동기화</div>
+      <div class="add-form">
+        <input type="password" id="gh-token-input"
+          placeholder="GitHub Personal Access Token (ghp_...)"
+          value="${GH.getToken() || ''}"
+          style="font-family:monospace;font-size:12px">
+        <div style="display:flex;gap:8px">
+          <button class="add-btn" onclick="saveGHToken()" style="flex:1">연결 저장</button>
+          <button class="add-btn" id="sync-btn" onclick="syncNow()" style="flex:1" ${GH.getToken() ? '' : 'disabled'}>지금 동기화</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6">
+          ${GH.getToken()
+            ? `<span class="sync-dot ok"></span>연결됨${GH.getLastSync() ? ` · 마지막 동기화: ${GH.getLastSync()}` : ''}`
+            : `<span class="sync-dot off"></span>연결 안 됨`}
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6">
+          토큰은 이 기기에만 저장됩니다. GitHub에 업로드되지 않습니다.<br>
+          저장 버튼을 누를 때마다 자동으로 GitHub에 동기화됩니다.
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
       <div class="settings-title">데이터 백업</div>
       <button class="action-btn" onclick="exportJSON()">📥 JSON으로 내보내기</button>
       <button class="action-btn" onclick="document.getElementById('fi').click()">📤 JSON 가져오기</button>
@@ -1103,6 +1206,30 @@ function importJSON(input) {
   r.readAsText(file);
 }
 
+async function saveGHToken() {
+  const t = document.getElementById('gh-token-input')?.value.trim();
+  if (!t) { toast('토큰을 입력해주세요', false); return; }
+  GH.setToken(t);
+  toast('연결 확인 중...');
+  const result = await GH.pull();
+  if (result === 'error') { toast('연결 실패. 토큰을 확인해주세요', false); return; }
+  if (result === 'empty') { toast('연결 성공! 저장 시 자동 동기화됩니다.'); }
+  else { toast('연결 성공! 최신 데이터를 불러왔어요.'); }
+  viewSettings();
+  viewDashboard();
+}
+
+async function syncNow() {
+  const btn = document.getElementById('sync-btn');
+  if (btn) btn.disabled = true;
+  toast('동기화 중...');
+  await GH.pull();
+  const ok = await GH.push();
+  toast(ok ? '동기화 완료!' : '동기화 실패. 토큰을 확인해주세요', ok);
+  viewSettings();
+  if (ok) viewDashboard();
+}
+
 function resetData() {
   if (!confirm('모든 데이터가 삭제되고 초기값으로 되돌아갑니다.\n정말 초기화할까요?')) return;
   localStorage.removeItem('at-items');
@@ -1125,9 +1252,13 @@ const App = {
     else if (view === 'settings') viewSettings();
     window.scrollTo(0, 0);
   },
-  init() {
+  async init() {
     DB.load();
     this.go('dashboard');
+    if (GH.getToken()) {
+      const result = await GH.pull();
+      if (result === 'ok') this.go('dashboard');
+    }
   },
 };
 
