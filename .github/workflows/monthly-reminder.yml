@@ -1,0 +1,38 @@
+name: 월별 자산 입력 알림
+
+on:
+  schedule:
+    - cron: '0 0 5 * *'  # 매달 5일 오전 9시 KST (= UTC 00:00)
+  workflow_dispatch:      # 수동 테스트용
+
+jobs:
+  send-reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 이메일 발송
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: zarathuza@gmail.com
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: "📊 이달 자산 입력할 시간이에요!"
+          to: zarathuza@gmail.com
+          from: 자산관리 <zarathuza@gmail.com>
+          html_body: |
+            <div style="font-family:-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#0d1117;color:#e6edf3;border-radius:16px">
+              <div style="font-size:32px;margin-bottom:16px">📊</div>
+              <h2 style="color:#00d2ff;margin:0 0 8px;font-size:20px">이달 자산을 입력할 시간이에요!</h2>
+              <p style="color:#8b949e;font-size:14px;line-height:1.6;margin:0 0 24px">
+                매달 5일, 자산 현황을 기록해 두면 나중에 큰 그림이 보입니다.<br>
+                지금 입력하고 이달 순자산을 확인해 보세요.
+              </p>
+              <a href="https://zarathuza.github.io/asset-tracker/"
+                 style="display:inline-block;padding:14px 28px;background:#00d2ff;color:#000;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px">
+                자산 입력하러 가기 →
+              </a>
+              <p style="color:#30363d;font-size:11px;margin-top:32px">
+                이 메일은 GitHub Actions에서 자동 발송됩니다.
+              </p>
+            </div>
