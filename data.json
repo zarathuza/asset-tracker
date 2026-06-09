@@ -1,0 +1,347 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "nh-check",
+      "name": "NH뱅크 월급통장",
+      "category": "예금",
+      "owner": "본인"
+    },
+    {
+      "id": "nh-savings",
+      "name": "NH 주택청약통장",
+      "category": "예금",
+      "owner": "본인"
+    },
+    {
+      "id": "woori-savings",
+      "name": "우리은행 주택청약통장",
+      "category": "예금",
+      "owner": "경화"
+    },
+    {
+      "id": "samsung-pension",
+      "name": "삼성생명 퇴직연금",
+      "category": "연금",
+      "owner": "본인"
+    },
+    {
+      "id": "lotte-castle",
+      "name": "롯데캐슬",
+      "category": "부동산",
+      "owner": "본인"
+    },
+    {
+      "id": "bmw-620d",
+      "name": "BMW 620D",
+      "category": "차량",
+      "owner": "본인"
+    },
+    {
+      "id": "grandeur",
+      "name": "그랜저 IG",
+      "category": "차량",
+      "owner": "본인"
+    },
+    {
+      "id": "mortgage",
+      "name": "주택담보대출",
+      "category": "대출",
+      "owner": "본인"
+    },
+    {
+      "id": "kakao-loan",
+      "name": "카카오뱅크 마이너스",
+      "category": "대출",
+      "owner": "본인"
+    },
+    {
+      "id": "kbank-loan",
+      "name": "케이뱅크 마이너스",
+      "category": "대출",
+      "owner": "본인"
+    }
+  ],
+  "snaps": [
+    {
+      "date": "2025-12",
+      "itemId": "nh-check",
+      "capital": 0,
+      "debt": null,
+      "note": ""
+    },
+    {
+      "date": "2025-12",
+      "itemId": "nh-savings",
+      "capital": 560000,
+      "debt": null,
+      "note": ""
+    },
+    {
+      "date": "2025-12",
+      "itemId": "woori-savings",
+      "capital": 13500000,
+      "debt": null,
+      "note": ""
+    },
+    {
+      "date": "2025-12",
+      "itemId": "samsung-pension",
+      "capital": 58310753,
+      "debt": null,
+      "note": ""
+    },
+    {
+      "date": "2025-12",
+      "itemId": "lotte-castle",
+      "capital": 950000000,
+      "debt": null,
+      "note": ""
+    },
+    {
+      "date": "2025-12",
+      "itemId": "bmw-620d",
+      "capital": 65000000,
+      "debt": 34748470,
+      "note": ""
+    },
+    {
+      "date": "2025-12",
+      "itemId": "grandeur",
+      "capital": 10000000,
+      "debt": null,
+      "note": ""
+    },
+    {
+      "date": "2025-12",
+      "itemId": "mortgage",
+      "capital": null,
+      "debt": 336967906,
+      "note": ""
+    },
+    {
+      "date": "2025-12",
+      "itemId": "kakao-loan",
+      "capital": null,
+      "debt": 28248707,
+      "note": ""
+    },
+    {
+      "date": "2025-12",
+      "itemId": "kbank-loan",
+      "capital": null,
+      "debt": 75211056,
+      "note": ""
+    },
+    {
+      "date": "2026-01",
+      "itemId": "nh-check",
+      "capital": 0,
+      "debt": null,
+      "note": ""
+    },
+    {
+      "date": "2026-01",
+      "itemId": "nh-savings",
+      "capital": 580000,
+      "debt": null,
+      "note": ""
+    },
+    {
+      "date": "2026-01",
+      "itemId": "woori-savings",
+      "capital": 13500000,
+      "debt": null,
+      "note": ""
+    },
+    {
+      "date": "2026-01",
+      "itemId": "samsung-pension",
+      "capital": 61310753,
+      "debt": null,
+      "note": ""
+    },
+    {
+      "date": "2026-01",
+      "itemId": "lotte-castle",
+      "capital": 950000000,
+      "debt": null,
+      "note": ""
+    },
+    {
+      "date": "2026-01",
+      "itemId": "bmw-620d",
+      "capital": 65000000,
+      "debt": 34748470,
+      "note": ""
+    },
+    {
+      "date": "2026-01",
+      "itemId": "grandeur",
+      "capital": 10000000,
+      "debt": null,
+      "note": ""
+    },
+    {
+      "date": "2026-01",
+      "itemId": "mortgage",
+      "capital": null,
+      "debt": 336652945,
+      "note": ""
+    },
+    {
+      "date": "2026-01",
+      "itemId": "kakao-loan",
+      "capital": null,
+      "debt": 30943320,
+      "note": ""
+    },
+    {
+      "date": "2026-01",
+      "itemId": "kbank-loan",
+      "capital": null,
+      "debt": 73812183,
+      "note": ""
+    },
+    {
+      "date": "2026-02",
+      "itemId": "nh-check",
+      "capital": 0,
+      "debt": null,
+      "note": ""
+    },
+    {
+      "date": "2026-02",
+      "itemId": "nh-savings",
+      "capital": 600000,
+      "debt": null,
+      "note": ""
+    },
+    {
+      "date": "2026-02",
+      "itemId": "woori-savings",
+      "capital": 13500000,
+      "debt": null,
+      "note": ""
+    },
+    {
+      "date": "2026-02",
+      "itemId": "samsung-pension",
+      "capital": 64310753,
+      "debt": null,
+      "note": ""
+    },
+    {
+      "date": "2026-02",
+      "itemId": "lotte-castle",
+      "capital": 970000000,
+      "debt": null,
+      "note": ""
+    },
+    {
+      "date": "2026-02",
+      "itemId": "bmw-620d",
+      "capital": 65000000,
+      "debt": 33590091,
+      "note": ""
+    },
+    {
+      "date": "2026-02",
+      "itemId": "grandeur",
+      "capital": 10000000,
+      "debt": null,
+      "note": ""
+    },
+    {
+      "date": "2026-02",
+      "itemId": "mortgage",
+      "capital": null,
+      "debt": 336336915,
+      "note": "4.05%"
+    },
+    {
+      "date": "2026-02",
+      "itemId": "kakao-loan",
+      "capital": null,
+      "debt": 31838541,
+      "note": "5.83%"
+    },
+    {
+      "date": "2026-02",
+      "itemId": "kbank-loan",
+      "capital": null,
+      "debt": 69696082,
+      "note": "5.77%"
+    },
+    {
+      "date": "2026-06",
+      "itemId": "nh-check",
+      "capital": 340000,
+      "debt": null,
+      "note": "0"
+    },
+    {
+      "date": "2026-06",
+      "itemId": "nh-savings",
+      "capital": 680000,
+      "debt": null,
+      "note": "0"
+    },
+    {
+      "date": "2026-06",
+      "itemId": "woori-savings",
+      "capital": 11000000,
+      "debt": null,
+      "note": "0"
+    },
+    {
+      "date": "2026-06",
+      "itemId": "samsung-pension",
+      "capital": 89310000,
+      "debt": null,
+      "note": "0"
+    },
+    {
+      "date": "2026-06",
+      "itemId": "lotte-castle",
+      "capital": 1000000000,
+      "debt": null,
+      "note": "0"
+    },
+    {
+      "date": "2026-06",
+      "itemId": "bmw-620d",
+      "capital": 65000000,
+      "debt": 28960000,
+      "note": "0"
+    },
+    {
+      "date": "2026-06",
+      "itemId": "grandeur",
+      "capital": 10000000,
+      "debt": null,
+      "note": "0"
+    },
+    {
+      "date": "2026-06",
+      "itemId": "mortgage",
+      "capital": null,
+      "debt": 335000000,
+      "note": "0"
+    },
+    {
+      "date": "2026-06",
+      "itemId": "kakao-loan",
+      "capital": null,
+      "debt": 24340000,
+      "note": "0"
+    },
+    {
+      "date": "2026-06",
+      "itemId": "kbank-loan",
+      "capital": null,
+      "debt": 75590000,
+      "note": "0"
+    }
+  ]
+}
